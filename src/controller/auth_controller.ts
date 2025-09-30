@@ -6,7 +6,6 @@ import generateToken from "../utils/token_generator";
 import { redisController } from "../controller/redis_controller";
 import { sendOTP } from "../services/email_service";
 
-
 dotenv.config();
 const token_secret = process.env.TOKEN_SECRET;
 
@@ -161,14 +160,22 @@ export const authController = {
 
   completeProfile: async (req: Request, res: Response) => {
     try {
-      const { full_name, bio, dob } = req.body;
+      let { bio, dob } = req.body;
       const userId = res.locals.userId;
 
-      if (!full_name || !bio || !dob) {
-        res.status(400).json({ 
-          message: "All fields (full_name, bio, dob) are required" }
-        );
+      if (!bio || !dob) {
+        res.status(400).json({
+          message: "All fields (bio, dob) are required",
+        });
         return;
+      }
+
+      const parsedDob = new Date(dob);
+
+      if (isNaN(parsedDob.getTime())) {
+        return res.status(400).json({
+          message: "Invalid date format for dob",
+        });
       }
 
       if (!req.file) {
@@ -195,7 +202,7 @@ export const authController = {
       }
 
       user.bio = bio;
-      user.date_of_birth = dob;
+      user.date_of_birth = parsedDob;
       user.avatar = imageUrl;
 
       await user.save();
