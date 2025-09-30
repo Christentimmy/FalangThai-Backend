@@ -1,7 +1,7 @@
 import express from "express";
 import { userController } from "../controller/user_controller";
 import tokenValidationMiddleware from "../middlewares/token_validator";
-import { statusChecker } from "../models/status_middleware";
+import { statusChecker } from "../middlewares/status_middleware";
 
 const router = express.Router();
 router.use(tokenValidationMiddleware);
