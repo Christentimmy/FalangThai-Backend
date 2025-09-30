@@ -406,11 +406,9 @@ export const userController = {
     try {
       const userId = res.locals.userId;
 
-      const user = await User
-        .findById(userId)
-        .select(
-          "status profile_completed location gender interested_in relationship_preference hobbies"
-        );
+      const user = await User.findById(userId).select(
+        "status profile_completed location gender interested_in relationship_preference hobbies"
+      );
 
       if (!user) {
         res.status(404).json({ message: "User not found" });
@@ -424,6 +422,79 @@ export const userController = {
     } catch (error) {
       console.error("Error retrieving user status:", error);
       res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
+
+  updatePreferences: async (req: Request, res: Response) => {
+    try {
+      const userId = res.locals.userId;
+      let { ageRange, maxDistance, interested_in } = req.body;
+      maxDistance = Number(maxDistance);
+
+      // Validate ageRange if present
+      if (
+        ageRange &&
+        (!Array.isArray(ageRange) ||
+          ageRange.length !== 2 ||
+          ageRange.some(isNaN))
+      ) {
+        res.status(400).json({
+          message: "Invalid age range format. Provide [minAge, maxAge]",
+        });
+        return;
+      }
+
+      // Validate maxDistance if present
+      if (
+        maxDistance &&
+        (typeof maxDistance !== "number" || maxDistance <= 0)
+      ) {
+        res.status(400).json({
+          message: "Invalid maxDistance. Must be a positive number",
+        });
+        return;
+      }
+      if (!ageRange && !maxDistance && !interested_in) {
+        res.status(400).json({
+          message: "No valid preferences provided",
+        });
+        return;
+      }
+      if (
+        interested_in &&
+        !["men", "women", "non-binary", "transgender", "everyone"].includes(
+          interested_in
+        )
+      ) {
+        res.status(400).json({
+          message: "Invalid interested_in value",
+        });
+        return;
+      }
+
+      // Prepare the update object
+      const updateData: any = {};
+
+      if (ageRange) updateData["preferences.ageRange"] = ageRange;
+      if (maxDistance) updateData["preferences.maxDistance"] = maxDistance;
+      if (interested_in) updateData["interested_in"] = interested_in;
+
+      // Update the user preferences
+      const user = await User.findByIdAndUpdate(
+        userId,
+        { $set: updateData },
+        { new: true, select: "preferences" }
+      );
+
+      if (!user) {
+        res.status(404).json({ message: "User not found" });
+        return;
+      }
+
+      res.status(200).json({ message: "Preferences updated successfully" });
+    } catch (error) {
+      console.error("Error updating preferences:", error);
+      res.status(500).json({ message: "Internal server error" });
     }
   },
 };
