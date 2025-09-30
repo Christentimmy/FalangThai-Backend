@@ -497,4 +497,37 @@ export const userController = {
       res.status(500).json({ message: "Internal server error" });
     }
   },
+
+  getMatches: async (req: Request, res: Response) => {
+    try {
+      const userId = res.locals.userId;
+      const matches = await Match.find({ users: { $in: [userId] } }).populate(
+        "users",
+        "full_name avatar gender"
+      );
+
+      if (!matches) {
+        res.status(404).json({ message: "Matches not found" });
+        return;
+      }
+
+      const matchedUsers = matches
+        .map((match) => {
+          // `users` is an array of populated User documents
+          const otherUser = match.users.find(
+            (u: any) => u._id.toString() !== userId.toString()
+          );
+          return otherUser;
+        })
+        .filter(Boolean);
+
+      res.status(200).json({
+        message: "matches retrieced successfully",
+        data: matchedUsers,
+      });
+    } catch (error) {
+      console.error("Error fetching matches:", error);
+      res.status(500).json({ message: "Something went wrong" });
+    }
+  },
 };

@@ -19,5 +19,6 @@ router.use(statusChecker);
 router.get("/get-potential-matches", userController.getPotentialMatches);
 router.post("/swipe-user", userController.swipeUser);
 router.patch("/update-preferences", userController.updatePreferences);
+router.get("/get-matches", userController.getMatches);
 
 export default router;
