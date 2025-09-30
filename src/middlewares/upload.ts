@@ -47,3 +47,21 @@ const supportTicketStorage = new CloudinaryStorage({
 });
 
 export const supportUpload = multer({ storage: supportTicketStorage });
+
+
+const storyStorage = new CloudinaryStorage({
+    cloudinary,
+    params: async (req, file) => {
+        const isVideo = file.mimetype.startsWith("video/");
+        return {
+            folder: "stories",
+            resource_type: isVideo ? "video" : "image",
+            public_id: `${Date.now()}-${file.originalname.split(".")[0]}`,
+        };
+    },
+  });
+  
+  export const uploadStoryMedia = multer({
+    storage: storyStorage,
+    limits: { fileSize: 30 * 1024 * 1024 }, // 30MB limit
+  });
