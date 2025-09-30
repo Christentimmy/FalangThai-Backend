@@ -6,6 +6,7 @@ import { setupSocket } from "./config/socket";
 
 import authRoutes from "./routes/auth_routes";
 import messageRoutes from "./routes/message_route";
+import supportTicketRoutes from "./routes/support_ticket_routes";
 import userRoutes from "./routes/user_routes";
 
 dotenv.config();
