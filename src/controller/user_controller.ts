@@ -4,6 +4,7 @@ import { IUser } from "../types/user_type";
 import { Swipe } from "../models/swipe_model";
 import { Match } from "../models/match_model";
 import { sendPushNotification, NotificationType } from "../config/onesignal";
+import Notification from "../models/notification_model";
 
 export const userController = {
   updateUserGender: async (req: Request, res: Response) => {
@@ -527,6 +528,68 @@ export const userController = {
       });
     } catch (error) {
       console.error("Error fetching matches:", error);
+      res.status(500).json({ message: "Something went wrong" });
+    }
+  },
+
+  getUsersWhoLikedMe: async (req: Request, res: Response) => {
+    try {
+      const userId = res.locals.userId;
+
+      const swipes = await Swipe.find({
+        targetUserId: userId,
+        type: { $ne: "dislike" },
+      }).populate("userId", "full_name avatar gender");
+
+      const response = swipes.map((swipe) => {
+        return {
+          _id: swipe._id,
+          user: swipe.userId,
+          type: swipe.type,
+          createdAt: swipe.createdAt,
+        };
+      });
+
+      res.status(200).json({
+        message: "Filtered users who liked you",
+        data: response,
+      });
+    } catch (error) {
+      console.error("Error fetching users who liked me:", error);
+      res.status(500).json({ message: "Something went wrong" });
+    }
+  },
+
+  getUserNotifications: async (req: Request, res: Response) => {
+    try {
+      const userId = res.locals.userId;
+      const page = parseInt(req.query.page as string, 10) || 1;
+      const limit = parseInt(req.query.limit as string, 10) || 10;
+      const unread = req.query.unread === "true";
+
+      const filter: any = { userId };
+      if (unread) filter.isRead = false;
+
+      const notifications = await Notification.find(filter)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit);
+
+      const totalNotifications = await Notification.countDocuments(filter);
+
+      res.status(200).json({
+        message: "Notifications retrieved successfully",
+        data: notifications,
+        pagination: {
+          page,
+          limit,
+          totalNotifications,
+          totalPages: Math.ceil(totalNotifications / limit),
+          hasNextPage: page * limit < totalNotifications,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
       res.status(500).json({ message: "Something went wrong" });
     }
   },

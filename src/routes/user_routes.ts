@@ -20,5 +20,7 @@ router.get("/get-potential-matches", userController.getPotentialMatches);
 router.post("/swipe-user", userController.swipeUser);
 router.patch("/update-preferences", userController.updatePreferences);
 router.get("/get-matches", userController.getMatches);
+router.get("/get-users-who-liked-me", userController.getUsersWhoLikedMe);
+router.get("/get-user-notifications", userController.getUserNotifications);
 
 export default router;
