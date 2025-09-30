@@ -26,4 +26,7 @@ router.patch("/mark-notifications-read", userController.markNotificationsRead);
 router.patch("/edit-profile", userController.editProfile);
 router.get("/get-user-with-id/:userId", userController.getUserWithId);
 
+router.post("/toggle-block", userController.toggleBlock);
+router.get("/get-blocked-users", userController.getBlockedUsers);
+
 export default router;

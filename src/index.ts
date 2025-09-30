@@ -1,9 +1,8 @@
-
-
 import express from "express";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import { connectToDatabase } from "./config/database";
+import { setupSocket } from "./config/socket";
 
 import authRoutes from "./routes/auth_routes";
 import userRoutes from "./routes/user_routes";
@@ -22,6 +21,8 @@ app.use('/api/user', userRoutes);
 
 connectToDatabase();
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
-});
+}); 
+
+setupSocket(server);
