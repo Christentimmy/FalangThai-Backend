@@ -1,0 +1,37 @@
+
+
+# Ignore the node_modules folder
+node_modules/
+
+# Ignore the .env file (contains sensitive information)
+.env
+
+# Ignore log files
+*.loauth
+
+# Ignore build/output directories
+dist/
+build/
+
+# Ignore IDE-specific files
+.vscode/
+.idea/
+
+# Ignore npm debug logs
+npm-debug.log*
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore package-lock.json (if you're using yarn)
+package-lock.json
+
+# Ignore yarn.lock (if you're using npm)
+yarn.lock
+
+# Ignore local development files
+.env.local
+.env.development
+.env.test
+.env.production
