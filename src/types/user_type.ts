@@ -8,7 +8,7 @@ export interface IUser extends Document {
   avatar?: string;
   bio?: string;
   gender: "male" | "female" | "others" | "prefer_not_to_say";
-  interested_in: "male" | "female" | "both" | "others" | "prefer_not_to_say";
+  interested_in: "men" | "women" | "non-binary" | "transgender" | "everyone";
   date_of_birth: Date;
   location: {
     type: string;
