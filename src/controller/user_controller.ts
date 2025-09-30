@@ -593,4 +593,84 @@ export const userController = {
       res.status(500).json({ message: "Something went wrong" });
     }
   },
+
+  markNotificationsRead: async (req: Request, res: Response) => {
+    try {
+      const userId = res.locals.userId;
+      const { notificationIds } = req.body;
+
+      if (
+        !notificationIds ||
+        !Array.isArray(notificationIds) ||
+        notificationIds.length === 0
+      ) {
+        res.status(400).json({ message: "Invalid notification IDs" });
+        return;
+      }
+
+      await Notification.updateMany(
+        { _id: { $in: notificationIds }, userId },
+        { $set: { isRead: true } }
+      );
+
+      res.status(200).json({ message: "Notifications marked as read" });
+    } catch (error) {
+      console.error("Error marking notifications as read:", error);
+      res.status(500).json({ message: "Something went wrong" });
+    }
+  },
+
+  editProfile: async (req: Request, res: Response) => {
+    try {
+      const user: IUser = res.locals.user;
+      const { full_name, bio, gender, email, phone_number } = req.body;
+
+      if (gender) {
+        if (gender !== "male" && gender !== "female" && gender !== "others") {
+          res.status(400).json({ message: "Invalid gender provided" });
+          return;
+        }
+      }
+
+      // Update user profile with provided data
+      if (full_name) user.full_name = full_name;
+      if (bio) user.bio = bio;
+      if (gender) user.gender = gender;
+      if (email) user.email = email;
+      if (phone_number) user.phone_number = phone_number;
+      user.updatedAt = new Date();
+      await user.save();
+
+      res.status(200).json({ message: "Profile updated successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Server error", error });
+    }
+  },
+
+  getUserWithId: async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.userId;
+      if (!userId) {
+        res.status(404).json({ message: "missing user Id" });
+        return;
+      }
+      const user = await User.findById(userId);
+      if (!user) {
+        res.status(400).json({ message: "user not found" });
+        return;
+      }
+      const customUser = user.toObject();
+      delete customUser.password;
+      delete customUser.role;
+      delete customUser.__v;
+
+      res.status(200).json({
+        message: "user retrieved successfully",
+        data: customUser,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "server error" });
+    }
+  },
 };

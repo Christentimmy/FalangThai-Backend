@@ -22,5 +22,8 @@ router.patch("/update-preferences", userController.updatePreferences);
 router.get("/get-matches", userController.getMatches);
 router.get("/get-users-who-liked-me", userController.getUsersWhoLikedMe);
 router.get("/get-user-notifications", userController.getUserNotifications);
+router.patch("/mark-notifications-read", userController.markNotificationsRead);
+router.patch("/edit-profile", userController.editProfile);
+router.get("/get-user-with-id/:userId", userController.getUserWithId);
 
 export default router;
