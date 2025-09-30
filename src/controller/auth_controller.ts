@@ -52,6 +52,7 @@ export const authController = {
       const otp: string = (
         Math.floor(Math.random() * (max - min + 1)) + min
       ).toString();
+      // console.log(otp);
 
       const result = await sendOTP(email, otp);
 

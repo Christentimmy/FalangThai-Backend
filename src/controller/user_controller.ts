@@ -1,5 +1,9 @@
 import { Request, Response } from "express";
 import User from "../models/user_model";
+import { IUser } from "../types/user_type";
+import { Swipe } from "../models/swipe_model";
+import { Match } from "../models/match_model";
+import { sendPushNotification, NotificationType } from "../config/onesignal";
 
 export const userController = {
   updateUserGender: async (req: Request, res: Response) => {
@@ -214,6 +218,187 @@ export const userController = {
     } catch (error) {
       console.error("Error updating location:", error);
       res.status(500).json({ error: "Internal Server Error" });
+    }
+  },
+
+  getPotentialMatches: async (req: Request, res: Response) => {
+    try {
+      const user: IUser = res.locals.user;
+
+      const [minAge, maxAge] = user.preferences.ageRange ?? [18, 100];
+      const maxDistance = user.preferences.maxDistance ?? 10000.0;
+
+      // Pagination variables
+      const page = parseInt(req.query.page as string, 10) || 1;
+      const limit = parseInt(req.query.limit as string, 10) || 50;
+      const skip = (page - 1) * limit;
+
+      // Calculate min & max birth years for age range filtering
+      const currentYear = new Date().getFullYear();
+      const minBirthYear = new Date(currentYear - maxAge, 0, 1);
+      const maxBirthYear = new Date(currentYear - minAge, 11, 31);
+
+      const aggregatePipeline: any[] = [
+        {
+          $geoNear: {
+            near: { type: "Point", coordinates: user.location.coordinates },
+            distanceField: "distance",
+            maxDistance: maxDistance * 1000, // Convert km to meters
+            spherical: true,
+          },
+        },
+        {
+          $lookup: {
+            from: "swipes", // collection name in MongoDB
+            let: { candidateId: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$targetUserId", "$$candidateId"] },
+                      { $eq: ["$userId", user._id] }, // only swipes by current user
+                    ],
+                  },
+                },
+              },
+            ],
+            as: "swipeInfo",
+          },
+        },
+        {
+          $match: {
+            date_of_birth: { $gte: minBirthYear, $lte: maxBirthYear },
+            status: "active",
+            hobbies: { $in: user.hobbies },
+            isDeleted: false,
+            profile_completed: true,
+            // already ensures current user doesn't see themselves
+            _id: { $ne: user._id },
+            // make sure no swipe record exists (exclude already swiped)
+            swipeInfo: { $eq: [] },
+            ...(user.interested_in !== "everyone" && {
+              gender: user.interested_in,
+            }),
+            $or: [
+              { interested_in: "everyone" },
+              { interested_in: user.gender },
+            ],
+          },
+        },
+        { $sort: { matchPercentage: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $project: {
+            full_name: 1,
+            avatar: 1,
+            date_of_birth: 1,
+            location: 1,
+            hobbies: 1,
+            distance: 1,
+            matchPercentage: 1,
+            weekend_availability: 1,
+            relationship_preference: 1,
+            plan: 1,
+            isVerified: 1,
+          },
+        },
+      ];
+
+      // Fetch matches using the aggregate pipeline
+      const matches = await User.aggregate(aggregatePipeline);
+
+      // Directly use stored location address
+      for (let match of matches) {
+        const distanceKm = (match.distance / 1000).toFixed(1);
+        match.location = {
+          address: `${match.location.address} (${distanceKm} Km)`,
+          coordinates: match.location.coordinates,
+        };
+      }
+
+      // Get total count for pagination - This needs to use the same pipeline
+      const countPipeline = [...aggregatePipeline];
+      countPipeline.splice(-2, 2);
+      countPipeline.push({ $count: "total" });
+      const countResult = await User.aggregate(countPipeline);
+      const totalMatches = countResult.length > 0 ? countResult[0].total : 0;
+
+      res.status(200).json({
+        message: "Matches retrieved successfully",
+        data: matches,
+        page,
+        limit,
+        totalMatches,
+        totalPages: Math.ceil(totalMatches / limit),
+        hasNextPage: page * limit < totalMatches,
+      });
+    } catch (error) {
+      console.error("Error fetching matches:", error);
+      res.status(500).json({ message: "Something went wrong" });
+    }
+  },
+
+  swipeUser: async (req: Request, res: Response) => {
+    try {
+      const userId = res.locals.userId;
+      if (!userId) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+      }
+      const { targetUserId, type } = req.body;
+
+      if (!targetUserId || !type) {
+        res.status(400).json({ message: "Missing required fields" });
+        return;
+      }
+      if (type !== "like" && type !== "pass" && type !== "superlike") {
+        res.status(400).json({ message: "Invalid swipe type" });
+        return;
+      }
+
+      const targetUser = await User.findById(targetUserId);
+      if (!targetUser) {
+        res.status(404).json({ message: "User not found" });
+        return;
+      }
+
+      // 3. Prevent duplicate swipe (update if exists)
+      await Swipe.findOneAndUpdate(
+        { userId, targetUserId },
+        { type },
+        { new: true, upsert: true }
+      );
+
+      if (type === "like" || type === "superlike") {
+        const reverseSwipe = await Swipe.findOne({
+          userId: targetUserId,
+          targetUserId: userId,
+          type: { $in: ["like", "superlike"] },
+        });
+
+        if (reverseSwipe) {
+          const sortedUsers = [userId, targetUserId].sort();
+          await Match.create({ users: sortedUsers });
+          await sendPushNotification(
+            targetUserId,
+            targetUser.one_signal_id,
+            NotificationType.MATCH,
+            "It's a match! 🎉"
+          );
+
+          return res.status(200).json({
+            message: "It's a match! 🎉",
+            match: { userId, targetUserId },
+          });
+        }
+      }
+
+      res.status(200).json({ message: "User liked successfully!" });
+    } catch (error) {
+      console.error("Error liking user:", error);
+      res.status(500).json({ message: "Something went wrong" });
     }
   },
 };
