@@ -44,6 +44,7 @@ export const authController = {
         email: email,
         password: hashedPassword,
         role: "user",
+        full_name: fullName,
       });
 
       const min = Math.pow(10, 3);

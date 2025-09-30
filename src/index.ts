@@ -6,6 +6,7 @@ import morgan from "morgan";
 import { connectToDatabase } from "./config/database";
 
 import authRoutes from "./routes/auth_routes";
+import userRoutes from "./routes/user_routes";
 
 dotenv.config();
 const app = express();
@@ -17,6 +18,8 @@ app.use(morgan('dev'));
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
+
 connectToDatabase();
 
 app.listen(port, () => {
