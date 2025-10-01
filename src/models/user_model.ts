@@ -54,6 +54,7 @@ const UserSchema = new Schema<IUser>(
       enum: ["Long-Term", "Marriage", "Short-Term", "Friends", "Other"],
       default: "Long-Term",
     },
+    stripeCustomerId: { type: String },
     subscription: {
       planId: { type: String },
       status: {

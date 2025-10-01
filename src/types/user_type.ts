@@ -38,6 +38,7 @@ export interface IUser extends Document {
     | "Other";
   isVerified: boolean;
   isDeleted: boolean;
+  stripeCustomerId: string;
   subscription: {
     planId: string;
     status:
