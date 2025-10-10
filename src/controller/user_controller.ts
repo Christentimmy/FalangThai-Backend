@@ -88,7 +88,7 @@ export const userController = {
       }
 
       const { interest_in } = req.body;
-
+      
       if (
         !["men", "women", "non-binary", "transgender", "everyone"].includes(
           interest_in

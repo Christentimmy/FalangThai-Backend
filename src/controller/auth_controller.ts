@@ -6,12 +6,22 @@ import generateToken from "../utils/token_generator";
 import { redisController } from "../controller/redis_controller";
 import { sendOTP } from "../services/email_service";
 import { verifyGoogleToken } from "../utils/google_token";
+import jwt, { JwtPayload } from "jsonwebtoken";
+import tokenBlacklistSchema from "../models/token_blacklist_model";
+import mongoose from "mongoose";
 
 dotenv.config();
 const token_secret = process.env.TOKEN_SECRET;
 
 if (!token_secret) {
   throw new Error("TOKEN_SECRET is missing in .env");
+}
+
+const isValidObjectId = mongoose.Types.ObjectId.isValid;
+
+interface DecodedToken extends JwtPayload {
+  id: string;
+  role: string;
 }
 
 export const authController = {
@@ -169,6 +179,7 @@ export const authController = {
       }
 
       const { email, password } = req.body;
+      console.log(email, password);
 
       if (!email || !password) {
         res.status(400).json({ message: "Email and Password are required" });
@@ -186,19 +197,12 @@ export const authController = {
         res.status(400).json({ message: "Invalid Password" });
         return;
       }
-
-      if (!user.is_email_verified) {
-        res.status(400).send({ message: "User need to verify your email" });
-        return;
-      }
-
-      if (!user.profile_completed) {
-        res.status(400).send({ message: "User need to complete your profile" });
-        return;
-      }
-
       const token = generateToken(user);
-      res.status(200).json({ message: "Login successful", token: token });
+
+      res.status(200).json({
+        message: "Login successful",
+        token: token,
+      });
     } catch (error) {
       console.error(`LoginController: ${error}`);
       res.status(500).json({ message: "Server error" });
@@ -392,6 +396,64 @@ export const authController = {
       });
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
+    }
+  },
+
+  validateToken: async (req: Request, res: Response) => {
+    try {
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) {
+        res.status(401).json({ message: "Unauthorized" });
+        return;
+      }
+      const decoded = jwt.verify(token, token_secret) as DecodedToken;
+
+      const isBlacklisted = await tokenBlacklistSchema.findOne({ token });
+      if (isBlacklisted) {
+        res.status(401).json({
+          message: "Token is invalid. Please log in again.",
+        });
+        return;
+      }
+
+      if (decoded.exp && Date.now() >= decoded.exp * 1000) {
+        res.status(401).json({ message: "Token has expired." });
+        return;
+      }
+
+      if (!isValidObjectId(decoded.id)) {
+        res.status(400).json({ message: "Invalid user ID" });
+        return;
+      }
+      res.status(200).json({ message: "Token is valid" });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+
+  logoutUser: async (req: Request, res: Response) => {
+    try {
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) {
+        return res.status(401).json({ message: "No token provided" });
+      }
+
+      const decoded = jwt.verify(token, token_secret!) as JwtPayload;
+
+      // Optional: ensure token belongs to a valid user
+      const user = await userSchema.findById(decoded.id);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+
+      // Add token to blacklist (if not using short token lifespans)
+      await tokenBlacklistSchema.create({ token, userId: user._id });
+
+      res.status(200).json({ message: "Logout successful" });
+    } catch (error) {
+      console.error("❌ Error in logout:", error);
+      res.status(500).json({ message: "Server error" });
     }
   },
 };
