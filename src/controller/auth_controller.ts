@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import generateToken from "../utils/token_generator";
 import { redisController } from "../controller/redis_controller";
 import { sendOTP } from "../services/email_service";
+import { verifyGoogleToken } from "../utils/google_token";
 
 dotenv.config();
 const token_secret = process.env.TOKEN_SECRET;
@@ -14,15 +15,53 @@ if (!token_secret) {
 }
 
 export const authController = {
+
+  googleAuthSignUp: async (req: Request, res: Response) => {
+    try {
+      if (!req.body || typeof req.body !== "object") {
+        res.status(400).json({ message: "Missing request body" });
+        return;
+      }
+      const { token } = req.body;
+      if (!token) return res.status(400).json({ message: "Token is required" });
+
+      const googleUser = await verifyGoogleToken(token);
+
+      let exist = await userSchema.findOne({ email: googleUser.email });
+      if (exist) {
+        res.status(404).json({ message: "User already exists" });
+        return;
+      }
+
+      const newUser = new userSchema({
+        email: googleUser.email,
+        role: "user",
+        is_email_verified: true,
+        full_name: googleUser.name,
+      });
+      await newUser.save();
+
+      const jwtToken = generateToken(newUser);
+
+      res.status(201).json({
+        message: "SignUp successful",
+        token: jwtToken,
+      });
+    } catch (error) {
+      console.error("Google signup error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  },
+
   signUpUser: async (req: Request, res: Response) => {
     try {
       if (!req.body) {
         res.status(400).json({ message: "Bad Request" });
         return;
       }
-      const { email, password, fullName } = req.body;
+      const { email, password, full_name } = req.body;
 
-      if (!email || !password || !fullName) {
+      if (!email || !password || !full_name) {
         res.status(400).json({
           message: "Email, Password, and Full Name are required",
         });
@@ -44,7 +83,7 @@ export const authController = {
         email: email,
         password: hashedPassword,
         role: "user",
-        full_name: fullName,
+        full_name: full_name,
       });
 
       const min = Math.pow(10, 3);
@@ -76,6 +115,50 @@ export const authController = {
       });
     } catch (error) {
       console.error(`SignUpUserController: ${error}`);
+      res.status(500).json({ message: "Server error" });
+    }
+  },
+
+  login: async (req: Request, res: Response) => {
+    try {
+      if (!req.body) {
+        res.status(400).json({ message: "Bad Request" });
+        return;
+      }
+
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        res.status(400).json({ message: "Email and Password are required" });
+        return;
+      }
+
+      const user = await userSchema.findOne({ email });
+      if (!user) {
+        res.status(404).json({ message: "User Not Found" });
+        return;
+      }
+
+      const isPasswordValid = await bcryptjs.compare(password, user.password);
+      if (!isPasswordValid) {
+        res.status(400).json({ message: "Invalid Password" });
+        return;
+      }
+
+      if (!user.is_email_verified) {
+        res.status(400).send({ message: "User need to verify your email" });
+        return;
+      }
+
+      if (!user.profile_completed) {
+        res.status(400).send({ message: "User need to complete your profile" });
+        return;
+      }
+
+      const token = generateToken(user);
+      res.status(200).json({ message: "Login successful", token: token });
+    } catch (error) {
+      console.error(`LoginController: ${error}`);
       res.status(500).json({ message: "Server error" });
     }
   },
@@ -213,6 +296,60 @@ export const authController = {
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
+
+  changeEmailOrNumber: async (req: Request, res: Response) => {
+    try {
+      const { email, phone_number } = req.body;
+      if (!email && !phone_number) {
+        res.status(400).json({ message: "Email or number required" });
+        return;
+      }
+
+      const user = await userSchema.findById(res.locals.userId);
+      if (!user) {
+        res.status(404).json({ message: "User Not Found" });
+        return;
+      }
+
+      const existEmail = await userSchema.findOne({ email });
+      if (existEmail) {
+        res.status(400).json({ message: "Email already exists" });
+        return;
+      }
+
+      if (email) {
+        user.email = email;
+      }
+
+      if (phone_number) {
+        user.phone_number = phone_number;
+      }
+
+      await user.save();
+      const min = Math.pow(10, 3);
+      const max = Math.pow(10, 4) - 1;
+      const otp: string = (
+        Math.floor(Math.random() * (max - min + 1)) + min
+      ).toString();
+
+      const result = await sendOTP(user.email, otp);
+
+      if (result.success === false) {
+        res
+          .status(400)
+          .json({ message: "Error sending email", data: { error: result } });
+        return;
+      }
+
+      await redisController.saveOtpToStore(email, otp.toString());
+
+      res.status(200).json({
+        message: "Details changed successfully, kindly request new otp",
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
     }
   },
 };

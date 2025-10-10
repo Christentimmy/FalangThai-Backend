@@ -5,11 +5,13 @@ import tokenValidationMiddleware from "../middlewares/token_validator";
 
 const router = express.Router();
 
+router.post("/login", authController.login);
 router.post("/register", authController.signUpUser);
 router.post("/verify-otp", authController.verifyOTP);
 router.post("/send-otp", authController.sendOTp);
 
 router.use(tokenValidationMiddleware);
 router.post("/complete-profile", uploadProfile.single("avatar"), authController.completeProfile);
+router.post("/change-auth-details", authController.changeEmailOrNumber);
 
 export default router;
