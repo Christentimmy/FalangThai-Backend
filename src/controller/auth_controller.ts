@@ -15,7 +15,6 @@ if (!token_secret) {
 }
 
 export const authController = {
-
   googleAuthSignUp: async (req: Request, res: Response) => {
     try {
       if (!req.body || typeof req.body !== "object") {
@@ -49,6 +48,49 @@ export const authController = {
       });
     } catch (error) {
       console.error("Google signup error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  },
+
+  googleAuthSignIn: async (req: Request, res: Response) => {
+    try {
+      if (!req.body || typeof req.body !== "object") {
+        res.status(400).json({ message: "Missing request body" });
+        return;
+      }
+      const { token } = req.body;
+      if (!token) return res.status(400).json({ message: "Token is required" });
+
+      const googleUser = await verifyGoogleToken(token);
+
+      const user = await userSchema.findOne({ email: googleUser.email });
+
+      if (!user) {
+        res.status(404).json({ message: "Invalid Credentials" });
+        return;
+      }
+      // Check if user is banned
+      if (user.status !== "active") {
+        res.status(403).json({ message: "Account banned or suspended" });
+        return;
+      }
+
+      // Generate token
+      const jwtToken = generateToken(user);
+
+      // Check if user profile is completed
+      if (!user.profile_completed) {
+        res.status(400).json({ message: "User Not Complete", token: jwtToken });
+        return;
+      }
+
+      res.status(200).json({
+        message: "Login Successful",
+        token: jwtToken,
+        email: user.email,
+      });
+    } catch (error) {
+      console.error("Google login error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   },
