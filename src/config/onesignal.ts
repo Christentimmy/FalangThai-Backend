@@ -66,7 +66,6 @@ const sendPushNotification = async (
     },
   };
 
-  console.log(payload);
 
   try {
     const response = await axios.post(

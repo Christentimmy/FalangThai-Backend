@@ -27,7 +27,7 @@ const UserSchema = new Schema<IUser>(
     photos: [{ type: String }],
     hobbies: [{ type: String }],
     preferences: {
-      ageRange: { type: [Number], default: [18, 50] },
+      ageRange: { type: [Number], default: [18, 150] },
       maxDistance: { type: Number, default: 50 },
     },
     role: {

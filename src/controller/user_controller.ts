@@ -227,12 +227,12 @@ export const userController = {
     try {
       const user: IUser = res.locals.user;
 
-      const [minAge, maxAge] = user.preferences.ageRange ?? [18, 100];
-      const maxDistance = user.preferences.maxDistance ?? 10000.0;
+      const [minAge, maxAge] = user.preferences.ageRange ?? [18, 150];
+      const maxDistance = user.preferences.maxDistance ?? 50.0;
 
       // Pagination variables
       const page = parseInt(req.query.page as string, 10) || 1;
-      const limit = parseInt(req.query.limit as string, 10) || 50;
+      const limit = 20;
       const skip = (page - 1) * limit;
 
       // Calculate min & max birth years for age range filtering
@@ -272,12 +272,11 @@ export const userController = {
           $match: {
             date_of_birth: { $gte: minBirthYear, $lte: maxBirthYear },
             status: "active",
+            role: "user",
             hobbies: { $in: user.hobbies },
             isDeleted: false,
             profile_completed: true,
-            // already ensures current user doesn't see themselves
             _id: { $ne: user._id },
-            // make sure no swipe record exists (exclude already swiped)
             swipeInfo: { $eq: [] },
             ...(user.interested_in !== "everyone" && {
               gender: user.interested_in,
@@ -303,6 +302,7 @@ export const userController = {
             weekend_availability: 1,
             relationship_preference: 1,
             plan: 1,
+            bio: 1,
             isVerified: 1,
           },
         },
@@ -505,7 +505,7 @@ export const userController = {
       const userId = res.locals.userId;
       const matches = await Match.find({ users: { $in: [userId] } }).populate(
         "users",
-        "full_name avatar gender"
+        "full_name avatar gender location bio date_of_birth"
       );
 
       if (!matches) {
@@ -540,14 +540,17 @@ export const userController = {
       const swipes = await Swipe.find({
         targetUserId: userId,
         type: { $ne: "dislike" },
-      }).populate("userId", "full_name avatar gender");
+      }).populate<{userId: IUser}>("userId", "full_name avatar gender location bio date_of_birth");
 
       const response = swipes.map((swipe) => {
         return {
-          _id: swipe._id,
-          user: swipe.userId,
-          type: swipe.type,
-          createdAt: swipe.createdAt,
+          _id: swipe.userId._id,
+          full_name: swipe.userId.full_name,
+          avatar: swipe.userId.avatar,
+          gender: swipe.userId.gender,
+          location: swipe.userId.location,
+          bio: swipe.userId.bio,
+          date_of_birth: swipe.userId.date_of_birth,
         };
       });
 
