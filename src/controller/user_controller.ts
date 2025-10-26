@@ -88,7 +88,7 @@ export const userController = {
       }
 
       const { interest_in } = req.body;
-      
+
       if (
         !["men", "women", "non-binary", "transgender", "everyone"].includes(
           interest_in
@@ -540,7 +540,10 @@ export const userController = {
       const swipes = await Swipe.find({
         targetUserId: userId,
         type: { $ne: "dislike" },
-      }).populate<{userId: IUser}>("userId", "full_name avatar gender location bio date_of_birth");
+      }).populate<{ userId: IUser }>(
+        "userId",
+        "full_name avatar gender location bio date_of_birth"
+      );
 
       const response = swipes.map((swipe) => {
         return {
@@ -627,11 +630,27 @@ export const userController = {
   editProfile: async (req: Request, res: Response) => {
     try {
       const user: IUser = res.locals.user;
-      const { full_name, bio, gender, email, phone_number } = req.body;
+      const {
+        full_name,
+        bio,
+        email,
+        relationship_preference,
+        interested_in,
+        max_distance,
+        age_range,
+      } = req.body;
 
-      if (gender) {
-        if (gender !== "male" && gender !== "female" && gender !== "others") {
-          res.status(400).json({ message: "Invalid gender provided" });
+      if (relationship_preference) {
+        if (
+          relationship_preference !== "Long-Term" &&
+          relationship_preference !== "Marriage" &&
+          relationship_preference !== "Short-Term" &&
+          relationship_preference !== "Friends" &&
+          relationship_preference !== "Other"
+        ) {
+          res
+            .status(400)
+            .json({ message: "Invalid relationship preference provided" });
           return;
         }
       }
@@ -639,15 +658,94 @@ export const userController = {
       // Update user profile with provided data
       if (full_name) user.full_name = full_name;
       if (bio) user.bio = bio;
-      if (gender) user.gender = gender;
       if (email) user.email = email;
-      if (phone_number) user.phone_number = phone_number;
+      if (relationship_preference)
+        user.relationship_preference = relationship_preference;
+      if (interested_in) user.interested_in = interested_in;
+      if (max_distance) user.preferences.maxDistance = max_distance;
+      if (age_range) {
+        user.preferences.ageRange = age_range;
+      }
       user.updatedAt = new Date();
       await user.save();
 
       res.status(200).json({ message: "Profile updated successfully" });
     } catch (error) {
       res.status(500).json({ message: "Server error", error });
+    }
+  },
+
+  addPhotoToGallery: async (req: Request, res: Response) => {
+    try {
+      const userId = res.locals.userId;
+      const photo = req.file.path;
+
+      if (!photo) {
+        res.status(400).json({ message: "Missing photo" });
+        return;
+      }
+
+      const user = await User.findById(userId);
+      if (!user) {
+        res.status(404).json({ message: "User not found" });
+        return;
+      }
+
+      user.photos.push(photo);
+      await user.save();
+
+      res.status(200).json({ message: "Photo added to gallery" });
+    } catch (error) {
+      console.error("Error adding photo to gallery:", error);
+      res.status(500).json({ message: "Something went wrong" });
+    }
+  },
+
+  removePhotoFromGallery: async (req: Request, res: Response) => {
+    try {
+      let { index } = req.body;
+
+      if (index === undefined) {
+        res.status(400).json({ message: "Missing Index" });
+        return;
+      }
+      index = parseInt(index);
+
+      const user = res.locals.user;
+
+      if (index >= 0 && index < user.photos.length) {
+        user.photos.splice(index, 1);
+        await user.save();
+      } else {
+        res.status(400).json({ message: "Invalid index" });
+        return;
+      }
+
+      res.status(200).json({ message: "Photo removed from gallery" });
+    } catch (error) {
+      console.error("Error removing photo from gallery:", error);
+      res.status(500).json({ message: "Something went wrong" });
+    }
+  },
+
+  updateProfileImage: async (req: Request, res: Response) => {
+    try {
+      const photo = req.file.path;
+
+      if (!photo) {
+        res.status(400).json({ message: "Missing photo" });
+        return;
+      }
+
+      const user = res.locals.user;
+
+      user.avatar = photo;
+      await user.save();
+
+      res.status(200).json({ message: "Profile image updated successfully" });
+    } catch (error) {
+      console.error("Error updating profile image:", error);
+      res.status(500).json({ message: "Something went wrong" });
     }
   },
 
@@ -736,5 +834,4 @@ export const userController = {
       return res.status(500).json({ message: "Internal server error" });
     }
   },
-  
 };

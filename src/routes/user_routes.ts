@@ -2,6 +2,7 @@ import express from "express";
 import { userController } from "../controller/user_controller";
 import tokenValidationMiddleware from "../middlewares/token_validator";
 import { statusChecker } from "../middlewares/status_middleware";
+import { uploadProfile } from "../middlewares/upload";
 
 const router = express.Router();
 router.use(tokenValidationMiddleware);
@@ -28,5 +29,9 @@ router.get("/get-user-with-id/:userId", userController.getUserWithId);
 
 router.post("/toggle-block", userController.toggleBlock);
 router.get("/get-blocked-users", userController.getBlockedUsers);
+
+router.patch("/update-profile-image", uploadProfile.single("avatar"), userController.updateProfileImage);
+router.post("/add-photo-to-gallery", uploadProfile.single("photos"), userController.addPhotoToGallery);
+router.post("/remove-photo-from-gallery", userController.removePhotoFromGallery);
 
 export default router;

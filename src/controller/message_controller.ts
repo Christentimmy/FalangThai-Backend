@@ -263,8 +263,8 @@ export const messageController = {
       const chatList = await Promise.all(
         Array.from(chatMap.values()).map(async (chat) => {
           const user = await userSchema
-            .findById(chat.userId)
-            .select("displayName avatarUrl");
+            .findById(chat.userId);
+            // .select("displayName avatarUrl full_name ");
           const isOnline = onlineUsers.has(chat.userId);
 
           // Truncate the last message if it exceeds the maximum length
