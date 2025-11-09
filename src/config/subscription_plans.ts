@@ -7,7 +7,7 @@ export const PLANS = {
     billingPeriodMonths: 1,
     price: 9,
     currency: "EUR",
-    stripePriceId: "price_1SDCuq2fYqVtcus2nvrXb7zI",
+    stripePriceId: "price_1SRW8PF12lISDwoGDvTm9S1G",
     features: [
       "Unlimited swipes",
       "See who viewed your profile",
@@ -25,7 +25,7 @@ export const PLANS = {
     billingPeriodMonths: 6,
     price: 54,
     currency: "EUR",
-    stripePriceId: "price_1SDCw72fYqVtcus2qrEwPtfn", 
+    stripePriceId: "price_1SRW8mF12lISDwoGy8eFqOCi", 
     features: [
       "All Basic features",
       "Advanced filters (age, distance, interests)",
@@ -43,7 +43,7 @@ export const PLANS = {
     billingPeriodMonths: 12,
     price: 108,
     currency: "EUR",
-    stripePriceId: "price_1SDCx12fYqVtcus2tHTlyPFf", 
+    stripePriceId: "price_1SRW9BF12lISDwoGGPAAknfq", 
     features: [
       "All Premium features",
       "See who liked you",

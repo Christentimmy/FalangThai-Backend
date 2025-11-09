@@ -9,7 +9,7 @@ import mongoose from "mongoose";
 dotenv.config();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-08-27.basil",
+  apiVersion: "2025-10-29.clover",
 });
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
@@ -64,8 +64,8 @@ export const createCheckoutSession = async (userId: string, planId: string) => {
       },
     ],
     mode: "subscription",
-    success_url: `${clientUrl}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${clientUrl}/subscription/canceled`,
+    success_url: `${clientUrl}/api/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${clientUrl}/api/subscription/canceled`,
     metadata: {
       userId: user._id.toString(),
       planId: plan.id,

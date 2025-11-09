@@ -4,7 +4,6 @@ import {
   getSubscription,
   cancelSubscription,
   reactivateSubscription,
-  handleWebhook,
 } from "../services/stripe_service";
 import { PLANS } from "../config/subscription_plans";
 import Subscription from "../models/subscription_model";
@@ -37,12 +36,12 @@ export const subscriptionController = {
         currentPeriodEnd: { $gt: new Date() },
       });
 
-      if (existingSubscription) {
-        return res.status(400).json({
-          message: "You already have an active subscription",
-          subscription: existingSubscription,
-        });
-      }
+      // if (existingSubscription) {
+      //   return res.status(400).json({
+      //     message: "You already have an active subscription",
+      //     subscription: existingSubscription,
+      //   });
+      // }
 
       const session = await createCheckoutSession(userId, planId);
 
