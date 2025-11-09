@@ -65,4 +65,24 @@ export interface IUser extends Document {
   premiumCredits: number;
   premiumExpiresAt: Date;
   totalInvites: number;
+  wallet: {
+    balance: number;
+    currency: string;
+    totalEarned: number;
+    totalWithdrawn: number;
+  };
+  paymentInfo: {
+    preferredMethod?: "bank_transfer" | "paypal" | "stripe";
+    bankTransfer?: {
+      accountHolderName?: string;
+      accountNumber?: string;
+      bankName?: string;
+    };
+    paypal?: {
+      email?: string;
+    };
+    stripe?: {
+      accountId?: string;
+    };
+  };
 }

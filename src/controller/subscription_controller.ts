@@ -11,9 +11,13 @@ import Subscription from "../models/subscription_model";
 export const subscriptionController = {
   getPlans: async (req: Request, res: Response) => {
     try {
-      res.json({ success: true, plans: PLANS });
+      if (!PLANS) {
+        res.status(404).json({ message: "Plans not found" });
+        return;
+      }
+      res.status(200).json({ data: PLANS });
     } catch (error) {
-      res.status(500).json({ success: false, error: "Failed to get plans" });
+      res.status(500).json({ message: "Failed to get plans" });
     }
   },
 
@@ -22,11 +26,9 @@ export const subscriptionController = {
       const userId = res.locals.userId;
       const planId = req.body.planId;
 
-      if (!userId) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
       if (!planId) {
-        return res.status(400).json({ message: "Plan ID is required" });
+        res.status(400).json({ message: "Plan ID is required" });
+        return;
       }
 
       // Check for existing active subscription
@@ -36,19 +38,21 @@ export const subscriptionController = {
         currentPeriodEnd: { $gt: new Date() },
       });
 
-      // if (existingSubscription) {
-      //   return res.status(400).json({
-      //     message: "You already have an active subscription",
-      //     subscription: existingSubscription,
-      //   });
-      // }
+      if (existingSubscription) {
+        return res.status(400).json({
+          message: "You already have an active subscription",
+          subscription: existingSubscription,
+        });
+      }
 
       const session = await createCheckoutSession(userId, planId);
 
-      res.json({
-        success: true,
-        checkoutUrl: session.url,
-        sessionId: session.id,
+      res.status(200).json({
+        message: "Checkout session created successfully",
+        data: {
+          checkoutUrl: session.url,
+          sessionId: session.id,
+        },
       });
     } catch (error: any) {
       console.error("Create subscription error:", error);
@@ -100,8 +104,7 @@ export const subscriptionController = {
     } catch (error: any) {
       console.error("Cancel subscription error:", error);
       res.status(500).json({
-        success: false,
-        error: error.message || "Failed to cancel subscription",
+        message: error.message || "Failed to cancel subscription",
       });
     }
   },
@@ -130,17 +133,17 @@ export const subscriptionController = {
   },
 
   success: async (req: Request, res: Response) => {
-    res.send({ success: true, message: "Payment successful" });
+    // res.send({ success: true, message: "Payment successful" });
     // console.log("Payment successful");
-    // const redirecUrl = "vetted://payment-success";
-    // res.redirect(redirecUrl);
+    const redirecUrl = "falangthai://payment-success";
+    res.redirect(redirecUrl);
     return;
   },
 
   cancelled: async (req: Request, res: Response) => {
-    res.send({ success: true, message: "Payment cancelled" });
-    // const redirecUrl = "vetted://payment-cancelled";
-    // res.redirect(redirecUrl);
+    // res.send({ success: true, message: "Payment cancelled" });
+    const redirecUrl = "falangthai://payment-cancelled";
+    res.redirect(redirecUrl);
     return;
   },
 };

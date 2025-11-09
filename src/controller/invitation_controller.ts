@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import UserModel from "../models/user_model";
 import InvitationRedemptionModel from "../models/invitation_redemption_model";
+import Commission from "../models/commission_model";
 import { generateInviteCode } from "../utils/invite_code_generator";
-import { INVITATION_REWARDS, applyReward } from "../config/rewards";
+import { REFERRAL_CONFIG, applyWelcomeBonus } from "../config/rewards";
 import { sendPushNotification, NotificationType } from "../config/onesignal";
 import { IUser } from "../types/user_type";
 
@@ -16,9 +17,17 @@ export const invitationController = {
       }
 
       if (user.inviteCode) {
+        const welcomeBonus = REFERRAL_CONFIG.INVITEE_WELCOME_BONUS.enabled
+          ? `${REFERRAL_CONFIG.INVITEE_WELCOME_BONUS.amount} free premium searches`
+          : "exclusive benefits";
+        
         res.status(200).json({
           inviteCode: user.inviteCode,
-          shareMessage: `Join our app and get ${INVITATION_REWARDS.INVITEE.amount} free premium searches! Use my invite code: ${user.inviteCode}`,
+          shareMessage: `Join our app and get ${welcomeBonus}! Use my invite code: ${user.inviteCode}. Plus, I earn 20% commission when you subscribe!`,
+          commissionInfo: {
+            rate: REFERRAL_CONFIG.COMMISSION_RATE,
+            description: "You earn 20% from every subscription your referrals purchase",
+          },
         });
         return;
       }
@@ -32,11 +41,19 @@ export const invitationController = {
       user.inviteCode = inviteCode;
       await user.save();
 
+      const welcomeBonus = REFERRAL_CONFIG.INVITEE_WELCOME_BONUS.enabled
+        ? `${REFERRAL_CONFIG.INVITEE_WELCOME_BONUS.amount} free premium searches`
+        : "exclusive benefits";
+
       res.status(200).json({
         message: "Invite code generated successfully",
         data: {
           inviteCode: user.inviteCode,
-          shareMessage: `Join our app and get ${INVITATION_REWARDS.INVITEE.amount} free premium searches! Use my invite code: ${user.inviteCode}`,
+          shareMessage: `Join our app and get ${welcomeBonus}! Use my invite code: ${user.inviteCode}. Plus, I earn 20% commission when you subscribe!`,
+          commissionInfo: {
+            rate: REFERRAL_CONFIG.COMMISSION_RATE,
+            description: "You earn 20% from every subscription your referrals purchase",
+          },
         },
       });
     } catch (error) {
@@ -45,11 +62,6 @@ export const invitationController = {
     }
   },
 
-  /**
-   * Redeem an invite code
-   * POST /api/invitations/redeem
-   * Body: { inviteCode: string }
-   */
   redeemInviteCode: async (req: Request, res: Response) => {
     try {
       const userId = res.locals.userId;
@@ -72,7 +84,6 @@ export const invitationController = {
 
       const normalizedCode = inviteCode.trim().toUpperCase();
 
-      // Check if user already redeemed this code
       const alreadyRedeemed = await InvitationRedemptionModel.findOne({
         inviteCode: normalizedCode,
         redeemedBy: user._id,
@@ -83,14 +94,12 @@ export const invitationController = {
         return;
       }
 
-      // Find the inviter by invite code
       const inviter : IUser = await UserModel.findOne({ inviteCode: normalizedCode });
       if (!inviter) {
         res.status(404).json({ message: "Invalid invite code" });
         return;
       }
 
-      // Prevent self-invite
       if (inviter._id.toString() === user._id.toString()) {
         res.status(400).json({ 
           message: "You cannot use your own invite code" 
@@ -98,7 +107,6 @@ export const invitationController = {
         return;
       }
 
-      // Check if user was already invited by someone
       if (user.invitedBy) {
         res.status(400).json({
           message: "You have already been invited by another user",
@@ -106,45 +114,31 @@ export const invitationController = {
         return;
       }
 
-      // Apply rewards to both users
-      const inviterRewardResult = applyReward(
-        inviter.premiumCredits,
-        inviter.premiumExpiresAt,
-        INVITATION_REWARDS.INVITER
-      );
+      let welcomeBonusAmount = 0;
+      if (REFERRAL_CONFIG.INVITEE_WELCOME_BONUS.enabled) {
+        const bonusResult = applyWelcomeBonus(user.premiumCredits);
+        user.premiumCredits = bonusResult.credits;
+        welcomeBonusAmount = REFERRAL_CONFIG.INVITEE_WELCOME_BONUS.amount;
+      }
 
-      const inviteeRewardResult = applyReward(
-        user.premiumCredits,
-        user.premiumExpiresAt,
-        INVITATION_REWARDS.INVITEE
-      );
+      user.invitedBy = inviter._id;
+      await user.save();
 
-      // Update inviter
-      inviter.premiumCredits = inviterRewardResult.credits;
-      inviter.premiumExpiresAt = inviterRewardResult.expiresAt;
       inviter.totalInvites += 1;
       await inviter.save();
 
-      // Update invitee
-      user.premiumCredits = inviteeRewardResult.credits;
-      user.premiumExpiresAt = inviteeRewardResult.expiresAt;
-      user.invitedBy = inviter._id;
-
-      await user.save();
-
-      // Record redemption
       await InvitationRedemptionModel.create({
         inviteCode: normalizedCode,
         inviterId: inviter._id,
         redeemedBy: user._id,
         rewardGiven: {
           inviterReward: {
-            type: INVITATION_REWARDS.INVITER.type,
-            amount: INVITATION_REWARDS.INVITER.amount,
+            type: "commission",
+            amount: REFERRAL_CONFIG.COMMISSION_RATE,
           },
           inviteeReward: {
-            type: INVITATION_REWARDS.INVITEE.type,
-            amount: INVITATION_REWARDS.INVITEE.amount,
+            type: REFERRAL_CONFIG.INVITEE_WELCOME_BONUS.enabled ? "credits" : "none",
+            amount: welcomeBonusAmount,
           },
         },
       });
@@ -158,10 +152,16 @@ export const invitationController = {
 
       res.status(200).json({
         message: "Invite code redeemed successfully!",
-        reward: {
-          type: INVITATION_REWARDS.INVITEE.type,
-          amount: INVITATION_REWARDS.INVITEE.amount,
-          creditsRemaining: user.premiumCredits,
+        welcomeBonus: REFERRAL_CONFIG.INVITEE_WELCOME_BONUS.enabled
+          ? {
+              type: "credits",
+              amount: welcomeBonusAmount,
+              creditsRemaining: user.premiumCredits,
+            }
+          : null,
+        referralInfo: {
+          message: `Your referrer will earn ${REFERRAL_CONFIG.COMMISSION_RATE * 100}% commission when you subscribe to any plan!`,
+          commissionRate: REFERRAL_CONFIG.COMMISSION_RATE,
         },
       });
     } catch (error) {
@@ -170,10 +170,6 @@ export const invitationController = {
     }
   },
 
-  /**
-   * Get user's invitation statistics
-   * GET /api/invitations/stats
-   */
   getInviteStats: async (req: Request, res: Response) => {
     try {
       const user = res.locals.user;
@@ -195,6 +191,24 @@ export const invitationController = {
         rewardGiven: r.rewardGiven.inviterReward,
       }));
 
+      // Get total commissions earned
+      const totalCommissionsEarned = await Commission.aggregate([
+        {
+          $match: {
+            referrerId: user._id,
+            status: "paid",
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: "$commissionAmount" },
+          },
+        },
+      ]);
+
+      const commissionsEarned = totalCommissionsEarned.length > 0 ? totalCommissionsEarned[0].total : 0;
+
       res.status(200).json({
         message: "Invitation statistics retrieved successfully",
         data: {
@@ -202,6 +216,13 @@ export const invitationController = {
           totalInvites: user.totalInvites,
           premiumCredits: user.premiumCredits,
           premiumExpiresAt: user.premiumExpiresAt || null,
+          wallet: {
+            balance: user.wallet?.balance || 0,
+            totalEarned: user.wallet?.totalEarned || 0,
+            totalWithdrawn: user.wallet?.totalWithdrawn || 0,
+            currency: user.wallet?.currency || "EUR",
+          },
+          commissionRate: REFERRAL_CONFIG.COMMISSION_RATE,
           recentInvites,
         },
       });
@@ -211,10 +232,6 @@ export const invitationController = {
     }
   },
 
-  /**
-   * Get current premium status
-   * GET /api/invitations/premium-status
-   */
   getPremiumStatus: async (req: Request, res: Response) => {
     try {
       const user = res.locals.user;

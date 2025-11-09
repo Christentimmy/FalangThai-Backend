@@ -35,3 +35,8 @@ yarn.lock
 .env.development
 .env.test
 .env.production
+
+IMPLEMENTATION_SUMMARY.md
+MIGRATION_GUIDE.md
+QUICK_REFERENCE.md
+REFERRAL_COMMISSION_SYSTEM.md

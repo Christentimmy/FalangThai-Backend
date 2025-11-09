@@ -2,7 +2,9 @@ import Stripe from "stripe";
 import dotenv from "dotenv";
 import User from "../models/user_model";
 import Subscription from "../models/subscription_model";
+import Commission from "../models/commission_model";
 import { PLANS } from "../config/subscription_plans";
+import { REFERRAL_CONFIG, calculateCommission } from "../config/rewards";
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 
@@ -325,6 +327,79 @@ const handlePaymentSucceeded = async (invoice: any) => {
       invoice.subscription as string
     );
     await handleSubscriptionUpdated(subscription);
+    
+    // Handle referral commission
+    await handleReferralCommission(invoice, subscription);
+  }
+};
+
+/**
+ * Handle referral commission when a payment succeeds
+ */
+const handleReferralCommission = async (
+  invoice: Stripe.Invoice,
+  subscription: Stripe.Subscription
+) => {
+  try {
+    // Get the user who made the payment
+    const customerId = invoice.customer as string;
+    const user = await User.findOne({ stripeCustomerId: customerId });
+    if (!user || !user.invitedBy) return;
+
+    // Get the plan details
+    const priceId = subscription.items.data[0].price.id;
+    const plan = Object.values(PLANS).find((p) => p.stripePriceId === priceId);
+    if (!plan) return;
+
+    // Check if commission already exists for this subscription
+    const existingCommission = await Commission.findOne({
+      subscriptionId: subscription.id,
+      referredUserId: user._id,
+    });
+
+    if (existingCommission) {
+      console.log(`Commission already exists for subscription ${subscription.id}`);
+      return;
+    }
+
+    // Calculate commission (20% of subscription price)
+    const commissionAmount = calculateCommission(plan.price);
+
+    // Create commission record
+    const commission = await Commission.create({
+      referrerId: user.invitedBy,
+      referredUserId: user._id,
+      subscriptionId: subscription.id,
+      planId: plan.id,
+      subscriptionAmount: plan.price,
+      commissionAmount,
+      commissionRate: REFERRAL_CONFIG.COMMISSION_RATE,
+      currency: plan.currency,
+      status: "pending",
+      stripePaymentIntentId: invoice.id as string, 
+    });
+
+    // Update referrer's wallet
+    const referrer = await User.findById(user.invitedBy);
+    if (referrer) {
+      await User.findByIdAndUpdate(user.invitedBy, {
+        $inc: {
+          "wallet.balance": commissionAmount,
+          "wallet.totalEarned": commissionAmount,
+        },
+      });
+
+      // Mark commission as paid
+      commission.status = "paid";
+      commission.paidAt = new Date();
+      await commission.save();
+
+      console.log(
+        `Commission of €${commissionAmount} credited to user ${referrer._id} for referral ${user._id}`
+      );
+    }
+  } catch (error) {
+    console.error("Error handling referral commission:", error);
   }
 };
 

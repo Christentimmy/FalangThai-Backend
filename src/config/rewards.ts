@@ -1,49 +1,32 @@
 
-export const INVITATION_REWARDS = {
-    // Reward for the inviter (person who shared the code)
-    INVITER: {
-      type: "credits" as const,
-      amount: 3, // Gets 3 free premium requests
-    },
+export const REFERRAL_CONFIG = {
+  COMMISSION_RATE: 0.20,
+  MIN_WITHDRAWAL_AMOUNT: 10,
+  CURRENCY: "USD",
   
-    // Reward for the invitee (person who used the code)
-    INVITEE: {
-      type: "credits" as const,
-      amount: 6, // Gets 6 free premium requests
-    },
 
-    
-  };
-  
-  /**
-   * Apply reward to user
-   */
-  export const applyReward = (
-    currentCredits: number,
-    currentExpiresAt: Date | undefined,
-    reward: typeof INVITATION_REWARDS.INVITER
-  ): { credits: number; expiresAt?: Date } => {
-    if (reward.type === "credits") {
-      return {
-        credits: currentCredits + reward.amount,
-        expiresAt: currentExpiresAt,
-      };
-    }
-  
-    if (reward.type === "time") {
-      const now = new Date();
-      const newExpiresAt = new Date(now.getTime() + reward.amount * 60 * 60 * 1000);
-      
-      // Extend existing premium time if it exists
-      if (currentExpiresAt && currentExpiresAt > now) {
-        newExpiresAt.setTime(currentExpiresAt.getTime() + reward.amount * 60 * 60 * 1000);
-      }
-      
-      return {
-        credits: currentCredits,
-        expiresAt: newExpiresAt,
-      };
-    }
-  
-    return { credits: currentCredits, expiresAt: currentExpiresAt };
-  };
+  INVITEE_WELCOME_BONUS: {
+    enabled: true,
+    type: "credits" as const,
+    amount: 3,
+  },
+} as const;
+
+
+export const calculateCommission = (
+  subscriptionAmount: number,
+  commissionRate: number = REFERRAL_CONFIG.COMMISSION_RATE
+): number => {
+  return Number((subscriptionAmount * commissionRate).toFixed(2));
+};
+
+export const applyWelcomeBonus = (
+  currentCredits: number
+): { credits: number } => {
+  if (REFERRAL_CONFIG.INVITEE_WELCOME_BONUS.enabled) {
+    return {
+      credits: currentCredits + REFERRAL_CONFIG.INVITEE_WELCOME_BONUS.amount,
+    };
+  }
+  return { credits: currentCredits };
+};

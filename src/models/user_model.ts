@@ -99,6 +99,44 @@ const UserSchema = new Schema<IUser>(
       type: Number,
       default: 0,
     },
+    // Referral commission wallet
+    wallet: {
+      balance: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      currency: {
+        type: String,
+        default: "EUR",
+      },
+      totalEarned: {
+        type: Number,
+        default: 0,
+      },
+      totalWithdrawn: {
+        type: Number,
+        default: 0,
+      },
+    },
+    // Payment information for withdrawals
+    paymentInfo: {
+      preferredMethod: {
+        type: String,
+        enum: ["bank_transfer", "paypal", "stripe"],
+      },
+      bankTransfer: {
+        accountHolderName: String,
+        accountNumber: String,
+        bankName: String,
+      },
+      paypal: {
+        email: String,
+      },
+      stripe: {
+        accountId: String,
+      },
+    },
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }

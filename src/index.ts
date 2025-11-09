@@ -12,6 +12,8 @@ import userRoutes from "./routes/user_routes";
 import subscriptionRoutes from "./routes/subscription_routes";
 import { handleWebhook } from "./services/stripe_service";
 import invitationRoutes from "./routes/invitation_routes";
+import walletRoutes from "./routes/wallet_routes";
+import adminWalletRoutes from "./routes/admin_wallet_routes";
 
 import bodyParser from "body-parser";
 
@@ -35,6 +37,8 @@ app.use("/api/story", storyRoutes);
 app.use("/api/support", supportTicketRoutes);
 app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/invitations", invitationRoutes);
+app.use("/api/wallet", walletRoutes);
+app.use("/api/admin/wallet", adminWalletRoutes);
 
 connectToDatabase();
 

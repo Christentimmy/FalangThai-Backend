@@ -1,4 +1,11 @@
 
+import dotenv from "dotenv";
+dotenv.config();
+
+if (!process.env.FALANGBASICPRICEID || !process.env.FALANGPREMIUMPRICEID || !process.env.FALANGPREMIUMPLUSPRICEID) {
+  throw new Error("Please add the subscription plans to the .env file");
+}
+
 export const PLANS = {
   BASIC: {
     id: "basic_monthly",
@@ -6,12 +13,14 @@ export const PLANS = {
     billingCycle: "month",
     billingPeriodMonths: 1,
     price: 9,
-    currency: "EUR",
-    stripePriceId: "price_1SRW8PF12lISDwoGDvTm9S1G",
+    currency: "USD",
+    stripePriceId: process.env.FALANGBASICPRICEID.toString(),
     features: [
       "Unlimited swipes",
       "See who viewed your profile",
       "Rewind last swipe",
+      "Super Likes per day: 1",
+      "Boosts per month: 1",
     ],
     limits: {
       superLikesPerDay: 1,
@@ -24,12 +33,15 @@ export const PLANS = {
     billingCycle: "6_months",
     billingPeriodMonths: 6,
     price: 54,
-    currency: "EUR",
-    stripePriceId: "price_1SRW8mF12lISDwoGy8eFqOCi", 
+    currency: "USD",
+    stripePriceId: process.env.FALANGPREMIUMPRICEID.toString(), 
     features: [
       "All Basic features",
-      "Advanced filters (age, distance, interests)",
+      "Advanced filters",
+      "See who liked you",
       "Ad-free experience",
+      "Super Likes per day: 3",
+      "Boosts per month: 2",
     ],
     limits: {
       superLikesPerDay: 3,
@@ -42,13 +54,14 @@ export const PLANS = {
     billingCycle: "12_months",
     billingPeriodMonths: 12,
     price: 108,
-    currency: "EUR",
-    stripePriceId: "price_1SRW9BF12lISDwoGGPAAknfq", 
+    currency: "USD",
+    stripePriceId: process.env.FALANGPREMIUMPLUSPRICEID.toString(), 
     features: [
       "All Premium features",
-      "See who liked you",
       "Change location (Travel mode)",
       "Priority support",
+      "Super Likes per day: 5",
+      "Boosts per month: 3",
     ],
     limits: {
       superLikesPerDay: 5,
