@@ -1,7 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import { IUser } from "../types/user_type";
 
-
 const UserSchema = new Schema<IUser>(
   {
     full_name: { type: String, default: "" },
@@ -71,6 +70,34 @@ const UserSchema = new Schema<IUser>(
       },
       currentPeriodEnd: { type: Date },
       cancelAtPeriodEnd: { type: Boolean, default: false },
+    },
+    inviteCode: {
+      type: String,
+      unique: true,
+      sparse: true,
+      uppercase: true,
+    },
+    invitedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    premiumCredits: {
+      type: Number,
+      default: 0,
+    },
+    // notificationSettings: {
+      // general: { type: Boolean, default: true },
+      // trendingPost: { type: Boolean, default: true },
+      // newComments: { type: Boolean, default: true },
+      // alertForWomenNames: { type: Boolean, default: true },
+      // reactions: { type: Boolean, default: true },
+    // },
+    premiumExpiresAt: {
+      type: Date,
+    },
+    totalInvites: {
+      type: Number,
+      default: 0,
     },
     isDeleted: { type: Boolean, default: false },
   },

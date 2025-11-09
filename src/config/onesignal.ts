@@ -18,6 +18,7 @@ enum NotificationType {
   SUPERLIKE = "superlike",
   MESSAGE = "message",
   MATCH = "match",
+  INVITE = "invite",
 }
 
 const sendPushNotification = async (

@@ -1,6 +1,15 @@
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
+
+interface INotificationSettings {
+  // general: boolean;
+  // trendingPost: boolean;
+  // newComments: boolean;
+  // alertForWomenNames: boolean;
+  // reactions: boolean;
+}
 
 export interface IUser extends Document {
+  _id: Types.ObjectId;
   full_name: string;
   email: string;
   phone_number: string;
@@ -51,4 +60,9 @@ export interface IUser extends Document {
     currentPeriodEnd: Date;
     cancelAtPeriodEnd: boolean;
   };
+  inviteCode: string;
+  invitedBy: Types.ObjectId;
+  premiumCredits: number;
+  premiumExpiresAt: Date;
+  totalInvites: number;
 }
