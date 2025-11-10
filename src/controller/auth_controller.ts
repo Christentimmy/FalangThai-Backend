@@ -144,17 +144,15 @@ export const authController = {
         Math.floor(Math.random() * (max - min + 1)) + min
       ).toString();
 
-      console.log(otp);
+      const result = await sendOTP(email, otp);
 
-      // const result = await sendOTP(email, otp);
-
-      // if (result.success === false) {
-      //   res.status(400).json({
-      //     message: "Error sending email",
-      //     data: { error: result },
-      //   });
-      //   return;
-      // }
+      if (result.success === false) {
+        res.status(400).json({
+          message: "Error sending email",
+          data: { error: result },
+        });
+        return;
+      }
 
       await redisController.saveOtpToStore(email, otp.toString());
       const token = generateToken(newUser);
@@ -180,7 +178,6 @@ export const authController = {
       }
 
       const { email, password } = req.body;
-      console.log(email, password);
 
       if (!email || !password) {
         res.status(400).json({ message: "Email and Password are required" });
@@ -274,16 +271,15 @@ export const authController = {
       ).toString();
 
       await redisController.saveOtpToStore(email, otp.toString());
-      console.log(otp);
 
-      // const result = await sendOTP(user.email, otp);
+      const result = await sendOTP(user.email, otp);
 
-      // if (result.success === false) {
-      //   res
-      //     .status(400)
-      //     .json({ message: "Error sending email", data: { error: result } });
-      //   return;
-      // }
+      if (result.success === false) {
+        res.status(400).json({
+          message: "Error sending email",
+        });
+        return;
+      }
       res.status(200).json({ message: "OTP sent successfully" });
     } catch (error) {
       console.error("❌ Error in sendOTP:", error);
