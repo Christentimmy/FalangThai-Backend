@@ -26,7 +26,7 @@ const invitationRedemptionSchema = new mongoose.Schema<IInvitationRedemptionType
       inviterReward: {
         type: {
           type: String,
-          enum: ["credits", "time"],
+          enum: ["credits", "time", "commission"],
           required: true,
         },
         amount: {
@@ -37,7 +37,7 @@ const invitationRedemptionSchema = new mongoose.Schema<IInvitationRedemptionType
       inviteeReward: {
         type: {
           type: String,
-          enum: ["credits", "time"],
+          enum: ["credits", "time", "commission"],
           required: true,
         },
         amount: {

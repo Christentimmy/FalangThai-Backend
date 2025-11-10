@@ -19,6 +19,7 @@ enum NotificationType {
   MESSAGE = "message",
   MATCH = "match",
   INVITE = "invite",
+  SYSTEM = "system",
 }
 
 const sendPushNotification = async (
@@ -79,7 +80,6 @@ const sendPushNotification = async (
         },
       }
     );
-    console.log("✅ Push notification sent:", response.data);
   } catch (pushError: any) {
     console.error(
       "❌ Error sending push notification:",

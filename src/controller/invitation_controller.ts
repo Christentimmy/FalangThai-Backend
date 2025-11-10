@@ -89,6 +89,7 @@ export const invitationController = {
         redeemedBy: user._id,
       });
 
+
       if (alreadyRedeemed) {
         res.status(400).json({ message: "You already redeemed this code" });
         return;
@@ -181,15 +182,17 @@ export const invitationController = {
       const redemptions = await InvitationRedemptionModel.find({
         inviterId: user._id,
       })
-        .populate<{ redeemedBy: IUser }>("redeemedBy", "displayName avatar")
+        .populate<{ redeemedBy: IUser }>("redeemedBy", "full_name avatar")
         .sort({ redeemedAt: -1 });
 
-      const recentInvites = redemptions.map((r) => ({
-        displayName: r.redeemedBy.full_name,
-        avatar: r.redeemedBy.avatar,
-        redeemedAt: r.redeemedAt,
-        rewardGiven: r.rewardGiven.inviterReward,
-      }));
+      const recentInvites = redemptions.map((r) => {
+        return {
+          displayName: r.redeemedBy.full_name,
+          avatar: r.redeemedBy.avatar,
+          redeemedAt: r.redeemedAt,
+          rewardGiven: r.rewardGiven.inviterReward,
+        };
+      });
 
       // Get total commissions earned
       const totalCommissionsEarned = await Commission.aggregate([

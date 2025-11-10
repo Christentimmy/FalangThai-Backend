@@ -108,7 +108,7 @@ const UserSchema = new Schema<IUser>(
       },
       currency: {
         type: String,
-        default: "EUR",
+        default: "USD",
       },
       totalEarned: {
         type: Number,

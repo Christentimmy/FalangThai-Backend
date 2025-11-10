@@ -17,7 +17,7 @@ export const calculateCommission = (
   subscriptionAmount: number,
   commissionRate: number = REFERRAL_CONFIG.COMMISSION_RATE
 ): number => {
-  return Number((subscriptionAmount * commissionRate).toFixed(2));
+  return Math.floor(subscriptionAmount * commissionRate);
 };
 
 export const applyWelcomeBonus = (

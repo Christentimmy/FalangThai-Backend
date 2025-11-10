@@ -38,12 +38,12 @@ export const subscriptionController = {
         currentPeriodEnd: { $gt: new Date() },
       });
 
-      if (existingSubscription) {
-        return res.status(400).json({
-          message: "You already have an active subscription",
-          subscription: existingSubscription,
-        });
-      }
+      // if (existingSubscription) {
+      //   return res.status(400).json({
+      //     message: "You already have an active subscription",
+      //     subscription: existingSubscription,
+      //   });
+      // }
 
       const session = await createCheckoutSession(userId, planId);
 
@@ -115,6 +115,11 @@ export const subscriptionController = {
 
       if (!userId) {
         return res.status(401).json({ success: false, error: "Unauthorized" });
+      }
+
+      const subscription = await getSubscription(userId);
+      if (!subscription) {
+        return res.status(404).json({ success: false, error: "Subscription not found" });
       }
 
       await reactivateSubscription(userId);

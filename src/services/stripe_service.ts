@@ -148,6 +148,8 @@ export const handleWebhook = async (req: Request, res: Response) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
+  // console.log("event", event.type);
+
   try {
     switch (event.type) {
       case "checkout.session.completed":
@@ -322,14 +324,21 @@ const handlePaymentFailed = async (invoice: any) => {
 };
 
 const handlePaymentSucceeded = async (invoice: any) => {
-  if (invoice.subscription) {
-    const subscription = await stripe.subscriptions.retrieve(
-      invoice.subscription as string
-    );
-    await handleSubscriptionUpdated(subscription);
+  try {
+    // Get subscription ID from either direct field or parent object
+    const subscriptionId = invoice.subscription || 
+                         (invoice.parent?.subscription_details?.subscription as string | undefined);
     
-    // Handle referral commission
+    if (!subscriptionId) {
+      console.log('No subscription ID found in invoice');
+      return;
+    }
+
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    await handleSubscriptionUpdated(subscription);
     await handleReferralCommission(invoice, subscription);
+  } catch (error) {
+    console.error('Error in handlePaymentSucceeded:', error);
   }
 };
 
@@ -358,7 +367,9 @@ const handleReferralCommission = async (
     });
 
     if (existingCommission) {
-      console.log(`Commission already exists for subscription ${subscription.id}`);
+      console.log(
+        `Commission already exists for subscription ${subscription.id}`
+      );
       return;
     }
 
@@ -376,7 +387,7 @@ const handleReferralCommission = async (
       commissionRate: REFERRAL_CONFIG.COMMISSION_RATE,
       currency: plan.currency,
       status: "pending",
-      stripePaymentIntentId: invoice.id as string, 
+      stripePaymentIntentId: invoice.id as string,
     });
 
     // Update referrer's wallet

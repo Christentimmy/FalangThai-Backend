@@ -144,15 +144,17 @@ export const authController = {
         Math.floor(Math.random() * (max - min + 1)) + min
       ).toString();
 
-      const result = await sendOTP(email, otp);
+      console.log(otp);
 
-      if (result.success === false) {
-        res.status(400).json({
-          message: "Error sending email",
-          data: { error: result },
-        });
-        return;
-      }
+      // const result = await sendOTP(email, otp);
+
+      // if (result.success === false) {
+      //   res.status(400).json({
+      //     message: "Error sending email",
+      //     data: { error: result },
+      //   });
+      //   return;
+      // }
 
       await redisController.saveOtpToStore(email, otp.toString());
       const token = generateToken(newUser);
@@ -272,15 +274,16 @@ export const authController = {
       ).toString();
 
       await redisController.saveOtpToStore(email, otp.toString());
+      console.log(otp);
 
-      const result = await sendOTP(user.email, otp);
+      // const result = await sendOTP(user.email, otp);
 
-      if (result.success === false) {
-        res
-          .status(400)
-          .json({ message: "Error sending email", data: { error: result } });
-        return;
-      }
+      // if (result.success === false) {
+      //   res
+      //     .status(400)
+      //     .json({ message: "Error sending email", data: { error: result } });
+      //   return;
+      // }
       res.status(200).json({ message: "OTP sent successfully" });
     } catch (error) {
       console.error("❌ Error in sendOTP:", error);
@@ -452,6 +455,58 @@ export const authController = {
       res.status(200).json({ message: "Logout successful" });
     } catch (error) {
       console.error("❌ Error in logout:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  },
+
+  changePassword: async (req: Request, res: Response) => {
+    try {
+      const userId = res.locals.userId;
+      const { oldPassword, newPassword } = req.body;
+      const user = await userSchema.findById(userId).select("+password");
+      if (!user) {
+        res.status(404).json({ message: "User does not exist" });
+        return;
+      }
+
+      const isPasswordValid = await bcryptjs.compare(
+        oldPassword,
+        user.password
+      );
+      if (!isPasswordValid) {
+        res.status(400).json({ message: "Invalid old password" });
+        return;
+      }
+      const salt = await bcryptjs.genSalt(10);
+      const password = await bcryptjs.hash(newPassword, salt);
+      user.password = password;
+      await user.save();
+      res.status(200).json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
+
+  resetPassword: async (req: Request, res: Response) => {
+    try {
+      const { email, password } = req.body;
+      if (!email || !password) {
+        res.status(400).json({ message: "Email and password are required" });
+        return;
+      }
+      const user = await userSchema.findOne({ email });
+      if (!user) {
+        res.status(404).json({ message: "User does not exist" });
+        return;
+      }
+      const salt = await bcryptjs.genSalt(10);
+      const hashedPassword = await bcryptjs.hash(password, salt);
+      user.password = hashedPassword;
+      await user.save();
+      res.status(200).json({ message: "Password reset successfully" });
+    } catch (error) {
+      console.error("❌ Error in resetPassword:", error);
       res.status(500).json({ message: "Server error" });
     }
   },

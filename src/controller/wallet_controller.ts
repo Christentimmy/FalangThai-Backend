@@ -18,45 +18,43 @@ export const walletController = {
         referrerId: user._id,
         status: "paid",
       })
-        .populate("referredUserId", "full_name avatar")
+        .populate<{ referredUserId: IUser }>(
+          "referredUserId",
+          "full_name avatar"
+        )
         .sort({ createdAt: -1 })
         .limit(20);
 
-      const pendingWithdrawals = await WithdrawalRequest.find({
+      const withdrawals = await WithdrawalRequest.find({
         userId: user._id,
-        status: { $in: ["pending", "processing"] },
+        // status: { $in: ["pending", "processing"] },
       }).sort({ createdAt: -1 });
 
       const response = await Promise.all([
-        {
-          balance: user.wallet?.balance || 0,
-          currency: user.wallet?.currency || "EUR",
-          totalEarned: user.wallet?.totalEarned || 0,
-          totalWithdrawn: user.wallet?.totalWithdrawn || 0,
-        },
         commissions.map((c) => ({
           id: c._id,
           amount: c.commissionAmount,
           subscriptionAmount: c.subscriptionAmount,
           planId: c.planId,
-          referredUser: c.referredUserId,
+          referredUserFullName: c.referredUserId.full_name,
+          referredUserAvatar: c.referredUserId.avatar,
           date: c.paidAt,
+          type: "commission",
         })),
-        pendingWithdrawals.map((w) => ({
+        withdrawals.map((w) => ({
           id: w._id,
           amount: w.amount,
           status: w.status,
           paymentMethod: w.paymentMethod,
-          createdAt: w.createdAt,
+          date: w.createdAt,
+          type: "withdrawal",
         })),
       ]);
 
       res.status(200).json({
         data: {
-          wallet: response[0],
-          commissions: response[1],
-          pendingWithdrawals: response[2],
-          minWithdrawalAmount: REFERRAL_CONFIG.MIN_WITHDRAWAL_AMOUNT,
+          commissions: response[0],
+          withdrawals: response[1],
         },
       });
     } catch (error) {
@@ -139,11 +137,12 @@ export const walletController = {
       if (paymentMethod === "bank_transfer") {
         if (
           !paymentDetails.accountHolderName ||
-          !paymentDetails.accountNumber
+          !paymentDetails.accountNumber ||
+          !paymentDetails.bankName
         ) {
           res.status(400).json({
             message:
-              "Account holder name and account number are required for bank transfer",
+              "Account holder name, account number and bank name are required for bank transfer",
           });
           return;
         }
@@ -192,10 +191,12 @@ export const walletController = {
         return;
       }
 
-      const { amount } = req.body;
+      const { amount, paymentMethod } = req.body;
 
-      if (!amount || amount <= 0) {
-        res.status(400).json({ message: "Invalid withdrawal amount" });
+      if (!amount || amount <= 0 || !paymentMethod) {
+        res
+          .status(400)
+          .json({ message: "Invalid withdrawal amount or payment method" });
         return;
       }
 
@@ -218,12 +219,12 @@ export const walletController = {
       }
 
       // Check if user has payment info set up
-      if (!user.paymentInfo?.preferredMethod) {
-        res.status(400).json({
-          message: "Please set up your payment information first",
-        });
-        return;
-      }
+      // if (!user.paymentInfo?.preferredMethod) {
+      //   res.status(400).json({
+      //     message: "Please set up your payment information first",
+      //   });
+      //   return;
+      // }
 
       // Check for pending withdrawals
       const pendingWithdrawal = await WithdrawalRequest.findOne({
@@ -240,21 +241,21 @@ export const walletController = {
 
       // Get payment details
       let paymentDetails: any = {};
-      if (user.paymentInfo.preferredMethod === "bank_transfer") {
-        paymentDetails = user.paymentInfo.bankTransfer;
-      } else if (user.paymentInfo.preferredMethod === "paypal") {
-        paymentDetails = user.paymentInfo.paypal;
-      } else if (user.paymentInfo.preferredMethod === "stripe") {
-        paymentDetails = user.paymentInfo.stripe;
+      if (paymentMethod === "bank_transfer") {
+        paymentDetails = user.paymentInfo?.bankTransfer || {};
+      } else if (paymentMethod === "paypal") {
+        paymentDetails = user.paymentInfo?.paypal || {};
+      } else {
+        paymentDetails = user.paymentInfo?.stripe || {};
       }
 
       // Create withdrawal request
       const withdrawalRequest = await WithdrawalRequest.create({
         userId: user._id,
         amount,
-        currency: user.wallet?.currency || "EUR",
+        currency: user.wallet?.currency || "USD",
         status: "pending",
-        paymentMethod: user.paymentInfo.preferredMethod,
+        paymentMethod: paymentMethod,
         paymentDetails,
       });
 
@@ -262,6 +263,9 @@ export const walletController = {
       await User.findByIdAndUpdate(user._id, {
         $inc: {
           "wallet.balance": -amount,
+        },
+        $set: {
+          "wallet.totalWithdrawn": user.wallet?.totalWithdrawn + amount,
         },
       });
 

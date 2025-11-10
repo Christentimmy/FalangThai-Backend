@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface INotification extends Document {
   userId: mongoose.Types.ObjectId;
-  type: "match" | "message" | "like" | "super_like" | "system";
+  type: "match" | "message" | "like" | "super_like" | "system" | "invite";
   message: string;
   link?: string;
   isRead: boolean;
@@ -12,7 +12,11 @@ export interface INotification extends Document {
 const NotificationSchema = new Schema<INotification>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    type: { type: String, enum: ["match", "message", "like", "super_like", "system"], required: true },
+    type: {
+      type: String,
+      enum: ["match", "message", "like", "super_like", "system", "invite"],
+      required: true,
+    },
     message: { type: String, required: true },
     link: { type: String },
     isRead: { type: Boolean, default: false },
@@ -21,6 +25,9 @@ const NotificationSchema = new Schema<INotification>(
   { timestamps: true }
 );
 
-const Notification = mongoose.model<INotification>("Notification", NotificationSchema);
+const Notification = mongoose.model<INotification>(
+  "Notification",
+  NotificationSchema
+);
 
 export default Notification;

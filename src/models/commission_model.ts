@@ -61,7 +61,7 @@ const commissionSchema = new Schema<ICommission>(
 
 // Indexes for efficient queries
 commissionSchema.index({ referrerId: 1, status: 1 });
-commissionSchema.index({ referredUserId: 1 });
-commissionSchema.index({ subscriptionId: 1 });
+// commissionSchema.index({ referredUserId: 1 });
+// commissionSchema.index({ subscriptionId: 1 });
 
 export default mongoose.model<ICommission>("Commission", commissionSchema);

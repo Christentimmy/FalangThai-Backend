@@ -12,10 +12,12 @@ router.post("/verify-otp", authController.verifyOTP);
 router.post("/send-otp", authController.sendOTp);
 router.post("/google-auth-signup", authController.googleAuthSignUp);
 router.post("/google-auth-signin", authController.googleAuthSignIn);
+router.post("/reset-password", authController.resetPassword);
 
 router.use(tokenValidationMiddleware);
 router.post("/logout", authController.logoutUser);
 router.post("/complete-profile", uploadProfile.single("avatar"), authController.completeProfile);
 router.post("/change-auth-details", authController.changeEmailOrNumber);
+router.post("/change-password", authController.changePassword);
 
 export default router;
