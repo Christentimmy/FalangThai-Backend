@@ -241,14 +241,14 @@ export const userController = {
       const maxBirthYear = new Date(currentYear - minAge, 11, 31);
 
       const aggregatePipeline: any[] = [
-        {
-          $geoNear: {
-            near: { type: "Point", coordinates: user.location.coordinates },
-            distanceField: "distance",
-            maxDistance: maxDistance * 1000, // Convert km to meters
-            spherical: true,
-          },
-        },
+        // {
+        //   $geoNear: {
+        //     near: { type: "Point", coordinates: user.location.coordinates },
+        //     distanceField: "distance",
+        //     maxDistance: maxDistance * 1000, // Convert km to meters
+        //     spherical: true,
+        //   },
+        // },
         {
           $lookup: {
             from: "swipes", // collection name in MongoDB
