@@ -143,17 +143,17 @@ export const authController = {
       const otp: string = (
         Math.floor(Math.random() * (max - min + 1)) + min
       ).toString();
-      console.log(otp);
+      // console.log(otp);
 
-      // const result = await sendOTP(email, otp);
+      const result = await sendOTP(email, otp);
 
-      // if (result.success === false) {
-      //   res.status(400).json({
-      //     message: "Error sending email",
-      //     data: { error: result },
-      //   });
-      //   return;
-      // }
+      if (result.success === false) {
+        res.status(400).json({
+          message: "Error sending email",
+          data: { error: result },
+        });
+        return;
+      }
 
       await redisController.saveOtpToStore(email, otp.toString());
       const token = generateToken(newUser);
