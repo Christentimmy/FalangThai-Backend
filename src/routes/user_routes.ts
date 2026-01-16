@@ -3,6 +3,7 @@ import { userController } from "../controller/user_controller";
 import tokenValidationMiddleware from "../middlewares/token_validator";
 import { statusChecker } from "../middlewares/status_middleware";
 import { uploadProfile } from "../middlewares/upload";
+import { checkSwipeLimit } from "../middlewares/plan_limit";
 
 const router = express.Router();
 router.use(tokenValidationMiddleware);
@@ -18,7 +19,7 @@ router.patch("/update-location", userController.updateUserLocation);
 
 router.use(statusChecker);
 router.get("/get-potential-matches", userController.getPotentialMatches);
-router.post("/swipe-user", userController.swipeUser);
+router.post("/swipe-user", checkSwipeLimit, userController.swipeUser);
 router.patch("/update-preferences", userController.updatePreferences);
 router.get("/get-matches", userController.getMatches);
 router.get("/get-users-who-liked-me", userController.getUsersWhoLikedMe);
@@ -30,8 +31,19 @@ router.get("/get-user-with-id/:userId", userController.getUserWithId);
 router.post("/toggle-block", userController.toggleBlock);
 router.get("/get-blocked-users", userController.getBlockedUsers);
 
-router.patch("/update-profile-image", uploadProfile.single("avatar"), userController.updateProfileImage);
-router.post("/add-photo-to-gallery", uploadProfile.single("photos"), userController.addPhotoToGallery);
-router.post("/remove-photo-from-gallery", userController.removePhotoFromGallery);
+router.patch(
+  "/update-profile-image",
+  uploadProfile.single("avatar"),
+  userController.updateProfileImage
+);
+router.post(
+  "/add-photo-to-gallery",
+  uploadProfile.single("photos"),
+  userController.addPhotoToGallery
+);
+router.post(
+  "/remove-photo-from-gallery",
+  userController.removePhotoFromGallery
+);
 
 export default router;

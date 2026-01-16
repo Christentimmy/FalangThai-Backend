@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import morgan from "morgan";
+
 import { connectToDatabase } from "./config/database";
 import { setupSocket } from "./config/socket";
 
@@ -14,6 +15,10 @@ import { handleWebhook } from "./services/stripe_service";
 import invitationRoutes from "./routes/invitation_routes";
 import walletRoutes from "./routes/wallet_routes";
 import adminWalletRoutes from "./routes/admin_wallet_routes";
+
+import "./jobs/cleanup_incomplete_subscriptions";
+import "./jobs/daily_free_reset";
+import "./jobs/subscription_job";
 
 import bodyParser from "body-parser";
 

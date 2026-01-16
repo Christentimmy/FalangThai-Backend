@@ -60,6 +60,7 @@ export interface IUser extends Document {
     currentPeriodEnd: Date;
     cancelAtPeriodEnd: boolean;
   };
+  daily_swipes: number;
   inviteCode: string;
   invitedBy: Types.ObjectId;
   premiumCredits: number;

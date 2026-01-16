@@ -71,6 +71,10 @@ const UserSchema = new Schema<IUser>(
       currentPeriodEnd: { type: Date },
       cancelAtPeriodEnd: { type: Boolean, default: false },
     },
+    daily_swipes: {
+      type: Number,
+      default: 0,
+    },
     inviteCode: {
       type: String,
       unique: true,
